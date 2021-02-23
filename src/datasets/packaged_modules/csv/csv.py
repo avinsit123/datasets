@@ -1,6 +1,5 @@
 # coding=utf-8
 
-import logging
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
@@ -10,7 +9,7 @@ import pyarrow as pa
 import datasets
 
 
-logger = logging.getLogger(__name__)
+logger = datasets.utils.logging.get_logger(__name__)
 
 
 @dataclass
@@ -126,9 +125,14 @@ class Csv(datasets.ArrowBasedBuilder):
                 float_precision=self.config.float_precision,
                 chunksize=self.config.chunksize,
             )
-            for batch_idx, df in enumerate(csv_file_reader):
-                pa_table = pa.Table.from_pandas(df, schema=schema)
-                # Uncomment for debugging (will print the Arrow table size and elements)
-                # logger.warning(f"pa_table: {pa_table} num rows: {pa_table.num_rows}")
-                # logger.warning('\n'.join(str(pa_table.slice(i, 1).to_pydict()) for i in range(pa_table.num_rows)))
-                yield (file_idx, batch_idx), pa_table
+
+            try:
+                for batch_idx, df in enumerate(csv_file_reader):
+                    pa_table = pa.Table.from_pandas(df, schema=schema)
+                    # Uncomment for debugging (will print the Arrow table size and elements)
+                    # logger.warning(f"pa_table: {pa_table} num rows: {pa_table.num_rows}")
+                    # logger.warning('\n'.join(str(pa_table.slice(i, 1).to_pydict()) for i in range(pa_table.num_rows)))
+                    yield (file_idx, batch_idx), pa_table
+            except ValueError as e:
+                logger.error(f"Failed to read file '{csv_file_reader.f}' with error {type(e)}: {e}")
+                raise
